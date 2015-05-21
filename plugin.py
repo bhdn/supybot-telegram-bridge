@@ -34,16 +34,94 @@ import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 
+import subprocess
+import threading
+import time
+import select
+import re
 
 class TelegramBridge(callbacks.Plugin):
     """Add the help for "@plugin help TelegramBridge" here
     This should describe *how* to use this plugin."""
 
+    _pipe = None
+
+    def __init__(self, irc):
+        super(TelegramBridge, self).__init__(irc)
+        self.log.debug("initualizing")
+        self._tgPipe = None
+        self._tgPipeLock = threading.Lock()
+        self._tgChat = self.registryValue("tgChat")
+        self._tgNick = self.registryValue("tgNick")
+        self._tgTargetChannel = None
+        self._tgIrc = None
+        self._startTelegramDaemon()
+
+    def _processTelegramLine(self, line):
+        if self._tgIrc is not None:
+            expr = r"\[\d\d:\d\d\]  %s (?P<author>.*) >>> (?P<msg>.*)" % (self._tgChat)
+            found = re.search(expr, line, re.U)
+            if found:
+                author = found.group("author")
+                if author != self._tgNick:
+                    msg = found.group("msg")
+                    line = "[%s] %s" % (author, msg)
+                    self._tgIrc.reply(line.encode("utf8"),
+                                      to=self._tgTargetChannel)
+
+    def _telegramLoop(self):
+        while True:
+            r, w, x = select.select([self._tgPipe.stdout.fileno()], [], [])
+            line = self._tgPipe.stdout.readline()
+            line = line.decode("utf8")
+            if not line:
+                self.log.critical("tg apparently died")
+                if self._tgIrc is not None:
+                    self._tgIrc.error("tg apparently is dead")
+                break
+            else:
+                self.log.debug("tg: %r" % (line))
+                self._processTelegramLine(line)
+
+    def _startTelegramDaemon(self):
+        binary = self.registryValue("tgCommand")
+        self.log.debug("starting %s" % (binary))
+        try:
+            self._tgPipe = subprocess.Popen(binary, shell=True,
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE,
+                                          stdin=subprocess.PIPE)
+        except EnvironmentError, e:
+            self.log.warn("failed to run the telegram client: %s" % (e))
+        else:
+            time.sleep(1)
+            if self._tgPipe.poll() is not None:
+                self.log.warn("failed to run the telegram client: %s" %
+                              self._tgPipe.stderr.read())
+            else:
+                thread = threading.Thread(target=self._telegramLoop)
+                thread.start()
+
+    def doJoin(self, irc, msg):
+        self.log.debug("joined %s" % (msg))
+        if self._tgTargetChannel is None:
+            self._tgIrc = irc
+            self._tgTargetChannel = msg.args[0]
+            self._tgMsg = msg
+            self.log.info("gathered the channel information (%s, %s)" %
+                          (irc, msg.args[0]))
+
     def doPrivmsg(self, irc, msg):
         irc = callbacks.SimpleProxy(irc, msg)
         channel = msg.args[0]
         if not msg.isError and channel in irc.state.channels:
-            # forward it to tg
+            chat = self._tgChat.replace("#", "@")
+            line = "msg %s %s: %s\r\n" % (chat, msg.nick, msg.args[1])
+            self.log.debug("writing %r" % (line))
+            self._tgPipe.stdin.write(line)
+
+    def command(self, irc, msg):
+        irc.replySuccess()
 
 Class = TelegramBridge
 

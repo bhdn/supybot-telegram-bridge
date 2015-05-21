@@ -39,11 +39,14 @@ def configure(advanced):
     from supybot.questions import expect, anything, something, yn
     conf.registerPlugin('TelegramBridge', True)
 
-
 TelegramBridge = conf.registerPlugin('TelegramBridge')
-# This is where your configuration variables (if any) should go.  For example:
-# conf.registerGlobalValue(TelegramBridge, 'someConfigVariableName',
-#     registry.Boolean(False, """Help for someConfigVariableName."""))
-
+conf.registerGlobalValue(TelegramBridge, 'tgCommand',
+    registry.String("telegram-ci -W -R -C -k ~/.telegram.pub", """path to the tg client"""))
+conf.registerGlobalValue(TelegramBridge, 'tgNick',
+    registry.String("TelegramUser", "Nick used by the telegram user"
+                   "(as shown by tg)"))
+conf.registerGlobalValue(TelegramBridge, 'tgChat',
+               registry.String("IrcChat", "Name of the telegram chat"
+                   "(as shown by tg)"))
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
