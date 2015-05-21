@@ -33,6 +33,7 @@ from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
+import supybot.ircmsgs as ircmsgs
 
 import subprocess
 import threading
@@ -102,6 +103,15 @@ class TelegramBridge(callbacks.Plugin):
                 thread = threading.Thread(target=self._telegramLoop)
                 thread.start()
 
+    def _sendTelegram(self, line):
+        self.log.debug("to tg: %r" % (line))
+        self._tgPipe.stdin.write(line + "\r\n")
+
+    def _sendToChat(self, text):
+        chat = self._tgChat.replace("#", "@")
+        command = "msg %s %s" % (chat, text)
+        self._sendTelegram(command)
+
     def doJoin(self, irc, msg):
         self.log.debug("joined %s" % (msg))
         if self._tgTargetChannel is None:
@@ -115,13 +125,20 @@ class TelegramBridge(callbacks.Plugin):
         irc = callbacks.SimpleProxy(irc, msg)
         channel = msg.args[0]
         if not msg.isError and channel in irc.state.channels:
-            chat = self._tgChat.replace("#", "@")
-            line = "msg %s %s: %s\r\n" % (chat, msg.nick, msg.args[1])
-            self.log.debug("writing %r" % (line))
-            self._tgPipe.stdin.write(line)
+            text = msg.args[1]
+            if ircmsgs.isAction(msg):
+                text = ircmsgs.unAction(msg)
+                line = "* %s %s" % (msg.nick, text)
+            else:
+                line = "%s> %s" % (msg.nick, text)
+            self._sendToChat(line)
 
-    def command(self, irc, msg):
-        irc.replySuccess()
+    def doTopic(self, irc, msg):
+        if len(msg.args) == 1:
+            return
+        channel = msg.args[0]
+        line = "%s: %s" % (channel, msg.args[1])
+        self._sendToChat(line)
 
 Class = TelegramBridge
 
