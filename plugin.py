@@ -67,14 +67,13 @@ class TelegramBridge(callbacks.Plugin):
                 if author != self._tgNick:
                     msg = found.group("msg")
                     line = "[%s] %s" % (author, msg)
-                    self._tgIrc.reply(line.encode("utf8"),
-                                      to=self._tgTargetChannel)
+                    self._sendIrcMessage(line)
 
     def _telegramLoop(self):
         while True:
             r, w, x = select.select([self._tgPipe.stdout.fileno()], [], [])
             line = self._tgPipe.stdout.readline()
-            line = line.decode("utf8")
+            line = line.decode("utf8", "replace")
             if not line:
                 self.log.critical("tg apparently died")
                 if self._tgIrc is not None:
@@ -104,13 +103,20 @@ class TelegramBridge(callbacks.Plugin):
                 thread.start()
 
     def _sendTelegram(self, line):
-        self.log.debug("to tg: %r" % (line))
-        self._tgPipe.stdin.write(line + "\r\n")
+        data = line.encode("utf8")
+        self.log.debug("to tg: %r" % (data))
+        self._tgPipe.stdin.write(data + "\r\n")
 
     def _sendToChat(self, text):
         chat = self._tgChat.replace("#", "@")
         command = "msg %s %s" % (chat, text)
         self._sendTelegram(command)
+
+    def _sendIrcMessage(self, text):
+        data = text.encode("utf8")
+        newMsg = ircmsgs.privmsg(self._tgTargetChannel, data)
+        newMsg.tag("from_telegram")
+        self._tgIrc.queueMsg(newMsg)
 
     def doJoin(self, irc, msg):
         self.log.debug("joined %s" % (msg))
@@ -127,18 +133,24 @@ class TelegramBridge(callbacks.Plugin):
         if not msg.isError and channel in irc.state.channels:
             text = msg.args[1]
             if ircmsgs.isAction(msg):
-                text = ircmsgs.unAction(msg)
+                text = ircmsgs.unAction(msg).decode("utf8")
                 line = "* %s %s" % (msg.nick, text)
             else:
-                line = "%s> %s" % (msg.nick, text)
+                line = "%s> %s" % (msg.nick, text.decode("utf8"))
             self._sendToChat(line)
 
     def doTopic(self, irc, msg):
         if len(msg.args) == 1:
             return
         channel = msg.args[0]
-        line = "%s: %s" % (channel, msg.args[1])
+        topic = msg.args[1]
+        line = u"%s: %s" % (channel, topic.decode("utf8"))
         self._sendToChat(line)
+
+    def outFilter(self, irc, msg):
+        if msg.command == "PRIVMSG" and not msg.from_telegram:
+            self.doPrivmsg(irc, msg)
+        return msg
 
 Class = TelegramBridge
 
