@@ -58,16 +58,26 @@ class TelegramBridge(callbacks.Plugin):
         self._tgIrc = None
         self._startTelegramDaemon()
 
+    def _feedToSupybot(self, author, text):
+        newMsg = ircmsgs.privmsg(self._tgTargetChannel, text.encode("utf8"))
+        newMsg.prefix = self._tgIrc.prefix.encode("utf8")
+        newMsg.tag("from_telegram")
+        newMsg.nick = author.encode("ascii", "replace")
+        self.log.debug("feeding back to supybot: %s", newMsg)
+        self._tgIrc.feedMsg(newMsg)
+
     def _processTelegramLine(self, line):
         if self._tgIrc is not None:
             expr = r"\[\d\d:\d\d\]  %s (?P<author>.*) >>> (?P<msg>.*)" % (self._tgChat)
             found = re.search(expr, line, re.U)
             if found:
-                author = found.group("author")
-                if author != self._tgNick:
+                orig_author = found.group("author")
+                if orig_author != self._tgNick:
+                    author = orig_author.replace(" ", "")
                     msg = found.group("msg")
                     line = "[%s] %s" % (author, msg)
                     self._sendIrcMessage(line)
+                    self._feedToSupybot(author, msg)
 
     def _telegramLoop(self):
         while True:
@@ -130,7 +140,8 @@ class TelegramBridge(callbacks.Plugin):
     def doPrivmsg(self, irc, msg):
         irc = callbacks.SimpleProxy(irc, msg)
         channel = msg.args[0]
-        if not msg.isError and channel in irc.state.channels:
+        if (not msg.isError and channel in irc.state.channels
+                and not msg.from_telegram):
             text = msg.args[1]
             if ircmsgs.isAction(msg):
                 text = ircmsgs.unAction(msg).decode("utf8")
