@@ -59,8 +59,9 @@ class TelegramBridge(callbacks.Plugin):
         self._startTelegramDaemon()
 
     def _feedToSupybot(self, author, text):
-        newMsg = ircmsgs.privmsg(self._tgTargetChannel, text.encode("utf8"))
-        newMsg.prefix = self._tgIrc.prefix.encode("utf8")
+        newMsg = ircmsgs.privmsg(self._tgTargetChannel,
+                                 text.encode("utf8", "replace"))
+        newMsg.prefix = self._tgIrc.prefix.encode("utf8", "replace")
         newMsg.tag("from_telegram")
         newMsg.nick = author.encode("ascii", "replace")
         self.log.debug("feeding back to supybot: %s", newMsg)
@@ -113,7 +114,7 @@ class TelegramBridge(callbacks.Plugin):
                 thread.start()
 
     def _sendTelegram(self, line):
-        data = line.encode("utf8")
+        data = line.encode("utf8", "replace")
         self.log.debug("to tg: %r" % (data))
         self._tgPipe.stdin.write(data + "\r\n")
 
@@ -123,7 +124,7 @@ class TelegramBridge(callbacks.Plugin):
         self._sendTelegram(command)
 
     def _sendIrcMessage(self, text):
-        data = text.encode("utf8")
+        data = text.encode("utf8", "replace")
         newMsg = ircmsgs.privmsg(self._tgTargetChannel, data)
         newMsg.tag("from_telegram")
         self._tgIrc.queueMsg(newMsg)
@@ -144,10 +145,10 @@ class TelegramBridge(callbacks.Plugin):
                 and not msg.from_telegram):
             text = msg.args[1]
             if ircmsgs.isAction(msg):
-                text = ircmsgs.unAction(msg).decode("utf8")
+                text = ircmsgs.unAction(msg).decode("utf8", "replace")
                 line = "* %s %s" % (msg.nick, text)
             else:
-                line = "%s> %s" % (msg.nick, text.decode("utf8"))
+                line = "%s> %s" % (msg.nick, text.decode("utf8", "replace"))
             self._sendToChat(line)
 
     def doTopic(self, irc, msg):
@@ -155,7 +156,7 @@ class TelegramBridge(callbacks.Plugin):
             return
         channel = msg.args[0]
         topic = msg.args[1]
-        line = u"%s: %s" % (channel, topic.decode("utf8"))
+        line = u"%s: %s" % (channel, topic.decode("utf8", "replace"))
         self._sendToChat(line)
 
     def outFilter(self, irc, msg):
