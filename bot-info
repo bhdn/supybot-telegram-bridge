@@ -1,3 +1,4 @@
+#!/usr/bin/python
 ###
 # Copyright (c) 2015, Bogdano Arendartchuk
 # All rights reserved.
@@ -25,28 +26,51 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+import sys
+import os
+import telegram
 
-###
+def die(msg):
+    sys.stderr.write(msg + "\n")
+    sys.exit(1)
 
-import supybot.conf as conf
-import supybot.registry as registry
+def check(reply):
+    if not reply.get("ok"):
+        die("request failed: %r" % (reply))
+    return reply
 
-def configure(advanced):
-    # This will be called by supybot to configure this module.  advanced is
-    # a bool that specifies whether the user identified himself as an advanced
-    # user or not.  You should effect your configuration by manipulating the
-    # registry as appropriate.
-    from supybot.questions import expect, anything, something, yn
-    conf.registerPlugin('TelegramBridge', True)
+def main(argv):
+    if len(argv) != 2:
+        die("usage: %s <bot token as provided by @BotFather>")
+    else:
+        token = argv[1]
+        try:
+            raw_id, _ = token.split(":", 1)
+            id = int(raw_id)
+        except ValueError:
+            die("expected token format <ID>:<HASH>")
+        found = False
+        tg = telegram.TelegramBot(token)
+        try:
+            reply = check(tg.getMe())
+            for token, reply in tg.updates():
+                participant = reply.get("new_chat_participant")
+                if participant and participant.get("id") == id:
+                    chat = reply.get("chat")
+                    if chat:
+                        print "title: %s tgChatId: %s" % (chat.get("title"),
+                                                        chat.get("id"))
+                        found = True
+        except telegram.TelegramError, e:
+            die("error: %s" % (e))
+        if found:
+            print
+            print "Please check if the intended chat shows up above and use "\
+                "tgChatId in the bot configuration."
+        else:
+            die("It seems the bot did not join any chat in the last 24 "\
+                "hours. Please check whether the token is correct and "\
+                "the bot has actually joined any chat.")
 
-TelegramBridge = conf.registerPlugin('TelegramBridge')
-conf.registerGlobalValue(TelegramBridge, 'tgToken',
-    registry.String("TelegramUser", "ID of the telegram bot"
-                   "(as shown by BotFather during creation)"))
-conf.registerGlobalValue(TelegramBridge, 'tgChatId',
-               registry.Integer("666", "ID of the telegram chat"))
-conf.registerGlobalValue(TelegramBridge, 'tgTimeout',
-               registry.Integer("120", "API timeout for waiting for "
-                   "updates"))
-
-# vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
+if __name__ == "__main__":
+    main(sys.argv)

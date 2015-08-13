@@ -35,11 +35,12 @@ import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 import supybot.ircmsgs as ircmsgs
 
-import subprocess
+import traceback
 import threading
 import time
-import select
 import re
+
+from telegram import TelegramBot, TelegramError
 
 class TelegramBridge(callbacks.Plugin):
     """Add the help for "@plugin help TelegramBridge" here
@@ -52,11 +53,17 @@ class TelegramBridge(callbacks.Plugin):
         self.log.debug("initualizing")
         self._tgPipe = None
         self._tgPipeLock = threading.Lock()
-        self._tgChat = self.registryValue("tgChat")
-        self._tgNick = self.registryValue("tgNick")
+        self._tgChatId = self.registryValue("tgChatId")
+        self._tgToken = self.registryValue("tgToken")
+        try:
+            self._tgId = int(self._tgToken.split(":", 1)[0])
+        except ValueError:
+            self.log.error("failed to parse tgToken, please check it is in "
+                           "the <ID>:<COOKIE> format")
+        self._tgTimeout = self.registryValue("tgTimeout")
         self._tgTargetChannel = None
         self._tgIrc = None
-        self._startTelegramDaemon()
+        self._tg = TelegramBot(self._tgToken)
 
     def _feedToSupybot(self, author, text):
         newMsg = ircmsgs.privmsg(self._tgTargetChannel,
@@ -67,51 +74,49 @@ class TelegramBridge(callbacks.Plugin):
         self.log.debug("feeding back to supybot: %s", newMsg)
         self._tgIrc.feedMsg(newMsg)
 
-    def _processTelegramLine(self, line):
-        if self._tgIrc is not None:
-            expr = r"\[\d\d:\d\d\]  %s (?P<author>.*) >>> (?P<msg>.*)" % (self._tgChat)
-            found = re.search(expr, line, re.U)
-            if found:
-                orig_author = found.group("author")
-                if orig_author != self._tgNick:
-                    author = orig_author.replace(" ", "")
-                    msg = found.group("msg")
-                    line = "[%s] %s" % (author, msg)
-                    self._sendIrcMessage(line)
-                    self._feedToSupybot(author, msg)
+    def _validTgChat(self, message):
+        chat = message.get("chat")
+        if chat and chat.get("id") == self._tgChatId:
+            return True
+        return False
+
+    def _tgUserRepr(self, user):
+        id = user.get("id", "??")
+        last_name = user.get("last_name", "")
+        name = user.get("name", str(id)) + last_name
+        chosen = user.get("username", name)
+        return id, chosen
+
+    def _tgHandleText(self, message):
+        text = message.get("text", "")
+        if not text:
+            for type in ("photo", "video", "audio", "sticker", "contact",
+                         "location"):
+                if message.get(type):
+                    text = "<%s>" % (type)
+        user = message.get("from")
+        id, author = self._tgUserRepr(user)
+        if id != self._tgId:
+            for line in text.splitlines():
+                repr = "%s> %s" % (author, line)
+                self._sendIrcMessage(repr)
+                self._feedToSupybot(author, line)
 
     def _telegramLoop(self):
         while True:
-            r, w, x = select.select([self._tgPipe.stdout.fileno()], [], [])
-            line = self._tgPipe.stdout.readline()
-            line = line.decode("utf8", "replace")
-            if not line:
-                self.log.critical("tg apparently died")
-                if self._tgIrc is not None:
-                    self._tgIrc.error("tg apparently is dead")
-                break
-            else:
-                self.log.debug("tg: %r" % (line))
-                self._processTelegramLine(line)
-
-    def _startTelegramDaemon(self):
-        binary = self.registryValue("tgCommand")
-        self.log.debug("starting %s" % (binary))
-        try:
-            self._tgPipe = subprocess.Popen(binary, shell=True,
-                                          stdout=subprocess.PIPE,
-                                          stderr=subprocess.PIPE,
-                                          stdin=subprocess.PIPE)
-        except EnvironmentError, e:
-            self.log.warn("failed to run the telegram client: %s" % (e))
-        else:
+            try:
+                for message in self._tg.updatesLoop(self._tgTimeout):
+                    if self._validTgChat(message):
+                        self._tgHandleText(message)
+            except (TelegramError, UnicodeError), e:
+                self.log.critical(traceback.format_exc())
+                self.log.critical(str(e))
             time.sleep(1)
-            if self._tgPipe.poll() is not None:
-                self.log.warn("failed to run the telegram client: %s" %
-                              self._tgPipe.stderr.read())
-            else:
-                thread = threading.Thread(target=self._telegramLoop)
-                thread.start()
+
+    def _startTelegramLoop(self):
+        t = threading.Thread(target=self._telegramLoop)
+        t.setDaemon(True)
+        t.start()
 
     def _sendTelegram(self, line):
         data = line.encode("utf8", "replace")
@@ -119,9 +124,9 @@ class TelegramBridge(callbacks.Plugin):
         self._tgPipe.stdin.write(data + "\r\n")
 
     def _sendToChat(self, text):
-        chat = self._tgChat.replace("#", "@")
-        command = "msg %s %s" % (chat, text)
-        self._sendTelegram(command)
+        text = text.decode("utf8", "replace")
+        text = text.encode("utf8")
+        self._tg.sendMessage(self._tgChatId, text)
 
     def _sendIrcMessage(self, text):
         data = text.encode("utf8", "replace")
@@ -137,6 +142,7 @@ class TelegramBridge(callbacks.Plugin):
             self._tgMsg = msg
             self.log.info("gathered the channel information (%s, %s)" %
                           (irc, msg.args[0]))
+            self._startTelegramLoop()
 
     def doPrivmsg(self, irc, msg):
         irc = callbacks.SimpleProxy(irc, msg)
@@ -149,6 +155,7 @@ class TelegramBridge(callbacks.Plugin):
                 line = "* %s %s" % (msg.nick, text)
             else:
                 line = "%s> %s" % (msg.nick, text.decode("utf8", "replace"))
+            line = line.encode("utf8", "replace")
             self._sendToChat(line)
 
     def doTopic(self, irc, msg):
@@ -157,7 +164,7 @@ class TelegramBridge(callbacks.Plugin):
         channel = msg.args[0]
         topic = msg.args[1]
         line = u"%s: %s" % (channel, topic.decode("utf8", "replace"))
-        self._sendToChat(line)
+        self._sendToChat(line.encode("utf8"))
 
     def outFilter(self, irc, msg):
         if msg.command == "PRIVMSG" and not msg.from_telegram:
