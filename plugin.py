@@ -110,7 +110,7 @@ class TelegramBridge(callbacks.Plugin):
                         self._tgHandleText(message)
             except Exception, e:
                 self.log.critical(traceback.format_exc())
-                self.log.critical(str(e))
+                self.log.critical("%s", str(e))
             time.sleep(1)
 
     def _startTelegramLoop(self):
