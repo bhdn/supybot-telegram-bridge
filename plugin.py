@@ -108,7 +108,7 @@ class TelegramBridge(callbacks.Plugin):
                 for message in self._tg.updatesLoop(self._tgTimeout):
                     if self._validTgChat(message):
                         self._tgHandleText(message)
-            except (TelegramError, UnicodeError), e:
+            except Exception, e:
                 self.log.critical(traceback.format_exc())
                 self.log.critical(str(e))
             time.sleep(1)
