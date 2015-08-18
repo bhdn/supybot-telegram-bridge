@@ -83,7 +83,7 @@ class TelegramBridge(callbacks.Plugin):
     def _tgUserRepr(self, user):
         id = user.get("id", "??")
         last_name = user.get("last_name", "")
-        name = user.get("name", str(id)) + last_name
+        name = user.get("first_name", str(id)) + last_name
         chosen = user.get("username", name)
         return id, chosen
 
