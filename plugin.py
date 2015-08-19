@@ -102,7 +102,14 @@ class TelegramBridge(callbacks.Plugin):
                 self._sendIrcMessage(repr)
                 self._feedToSupybot(author, line)
 
+    def _telegramDiscardPreviousUpdates(self):
+        update_id = None
+        for update_id, update in self._tg.updates():
+            pass
+        all(self._tg.updates(state=update_id))
+
     def _telegramLoop(self):
+        self._telegramDiscardPreviousUpdates()
         while True:
             try:
                 for message in self._tg.updatesLoop(self._tgTimeout):
