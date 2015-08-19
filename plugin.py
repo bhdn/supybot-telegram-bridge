@@ -51,8 +51,6 @@ class TelegramBridge(callbacks.Plugin):
     def __init__(self, irc):
         super(TelegramBridge, self).__init__(irc)
         self.log.debug("initualizing")
-        self._tgPipe = None
-        self._tgPipeLock = threading.Lock()
         self._tgChatId = self.registryValue("tgChatId")
         self._tgToken = self.registryValue("tgToken")
         try:
@@ -124,11 +122,6 @@ class TelegramBridge(callbacks.Plugin):
         t = threading.Thread(target=self._telegramLoop)
         t.setDaemon(True)
         t.start()
-
-    def _sendTelegram(self, line):
-        data = line.encode("utf8", "replace")
-        self.log.debug("to tg: %r" % (data))
-        self._tgPipe.stdin.write(data + "\r\n")
 
     def _sendToChat(self, text):
         text = text.decode("utf8", "replace")
