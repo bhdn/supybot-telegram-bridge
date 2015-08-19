@@ -17,7 +17,8 @@ It relies on the [Telegram Bot API](https://core.telegram.org/bots/api).
 6. Either update the supybot's bot configuration manually or run
    `supybot-wizard` again and fill `tgChatId` and `tgid` from the output of
    the script from the previous step.
-7. Ensure `TelegramBridge` is in the list of plugins to load automatically
+7. Ensure `TelegramBridge` is in the list of plugins to load automatically.
+   Loading the bot using supybot commmand `load` currently does not work.
 8. Run `supybot <YOURBOT.conf>`.
 9. Enjoy
 
