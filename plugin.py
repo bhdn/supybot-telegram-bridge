@@ -109,7 +109,7 @@ class TelegramBridge(callbacks.Plugin):
                     if self._validTgChat(message):
                         self._tgHandleText(message)
             except Exception, e:
-                self.log.critical(traceback.format_exc())
+                self.log.critical("%s", traceback.format_exc())
                 self.log.critical("%s", str(e))
             time.sleep(1)
 
