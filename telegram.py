@@ -26,10 +26,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import urllib
-import urllib2
+import sys
 import json
 import pprint
+
+if sys.version_info[0] >= 3:
+    from urllib.parse import urlencode
+    from urllib.request import urlopen
+else:
+    from urllib import urlencode
+    from urllib2 import urlopen
 
 BASEURL = "https://api.telegram.org/bot%(id)s/%(method)s?%(args)s"
 
@@ -43,15 +49,16 @@ class TelegramBot:
         self.timeout = timeout
 
     def call(self, method, **args):
-        encoded_args = urllib.urlencode(args)
+        encoded_args = urlencode(args)
         info = dict(id=self.id, method=method, args=encoded_args)
         query_url = BASEURL % (info)
         try:
-            data = json.load(urllib2.urlopen(query_url,
-                                             timeout=self.timeout))
-        except EnvironmentError, e:
+            data = urlopen(query_url, timeout=self.timeout)
+        except EnvironmentError as e:
             raise TelegramError("failed to send request to %s: %s" % (query_url, e))
-        return data
+        if sys.version_info[0] >= 3:
+            data = data.read().decode()
+        return json.loads(data)
 
     def updates(self, state=None, timeout=None):
         args = {}

@@ -38,9 +38,14 @@ import supybot.ircmsgs as ircmsgs
 import traceback
 import threading
 import time
+import sys
 import re
 
-from telegram import TelegramBot, TelegramError
+import imp
+from . import telegram
+imp.reload(telegram)
+
+from .telegram import TelegramBot, TelegramError
 
 class TelegramBridge(callbacks.Plugin):
     """Add the help for "@plugin help TelegramBridge" here
@@ -113,7 +118,7 @@ class TelegramBridge(callbacks.Plugin):
                 for message in self._tg.updatesLoop(self._tgTimeout):
                     if self._validTgChat(message):
                         self._tgHandleText(message)
-            except Exception, e:
+            except Exception as e:
                 self.log.critical("%s", traceback.format_exc())
                 self.log.critical("%s", str(e))
             time.sleep(1)
@@ -124,13 +129,15 @@ class TelegramBridge(callbacks.Plugin):
         t.start()
 
     def _sendToChat(self, text):
-        text = text.decode("utf8", "replace")
-        text = text.encode("utf8")
+        if sys.version_info[0] < 3:
+            text = text.decode("utf8", "replace")
+            text = text.encode("utf8")
         self._tg.sendMessage(self._tgChatId, text)
 
     def _sendIrcMessage(self, text):
-        data = text.encode("utf8", "replace")
-        newMsg = ircmsgs.privmsg(self._tgTargetChannel, data)
+        if sys.version_info[0] < 3:
+            text = text.encode("utf8", "replace")
+        newMsg = ircmsgs.privmsg(self._tgTargetChannel, text)
         newMsg.tag("from_telegram")
         self._tgIrc.queueMsg(newMsg)
 
@@ -151,11 +158,16 @@ class TelegramBridge(callbacks.Plugin):
                 and not msg.from_telegram):
             text = msg.args[1]
             if ircmsgs.isAction(msg):
-                text = ircmsgs.unAction(msg).decode("utf8", "replace")
+                text = ircmsgs.unAction(msg)
+                if sys.version_info[0] < 3:
+                    text = text.decode("utf8", "replace")
                 line = "* %s %s" % (msg.nick, text)
             else:
-                line = "%s> %s" % (msg.nick, text.decode("utf8", "replace"))
-            line = line.encode("utf8", "replace")
+                if sys.version_info[0] < 3:
+                    text = text.decode("utf8", "replace")
+                line = "%s> %s" % (msg.nick, text)
+            if sys.version_info[0] < 3:
+                line = line.encode("utf8", "replace")
             self._sendToChat(line)
 
     def doTopic(self, irc, msg):
@@ -163,8 +175,12 @@ class TelegramBridge(callbacks.Plugin):
             return
         channel = msg.args[0]
         topic = msg.args[1]
-        line = u"%s: %s" % (channel, topic.decode("utf8", "replace"))
-        self._sendToChat(line.encode("utf8"))
+        if sys.version_info[0] < 3:
+            topic = topic.decode("utf8", "replace")
+        line = u"%s: %s" % (channel, topic)
+        if sys.version_info[0] < 3:
+            line = line.encode("utf8")
+        self._sendToChat(line)
 
     def outFilter(self, irc, msg):
         if msg.command == "PRIVMSG" and not msg.from_telegram:
