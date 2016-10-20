@@ -39,19 +39,21 @@ else:
 
 BASEURL = "https://api.telegram.org/bot%(id)s/%(method)s?%(args)s"
 
+
 class TelegramError(Exception):
     pass
 
+
 class TelegramBot:
 
-    def __init__(self, id, timeout=600):
-        self.id = id
+    def __init__(self, bot_id, timeout=600):
+        self.bot_id = bot_id
         self.timeout = timeout
 
     def call(self, method, **args):
         encoded_args = urlencode(args)
-        info = dict(id=self.id, method=method, args=encoded_args)
-        query_url = BASEURL % (info)
+        info = dict(id=self.bot_id, method=method, args=encoded_args)
+        query_url = BASEURL % info
         try:
             data = urlopen(query_url, timeout=self.timeout)
         except EnvironmentError as e:
@@ -76,16 +78,16 @@ class TelegramBot:
             if message is not None:
                 yield update_id, message
 
-    def updatesLoop(self, timeout):
+    def updates_loop(self, timeout):
         update_id = None
         while True:
             for update_id, message in self.updates(state=update_id,
-                                              timeout=timeout):
+                                                   timeout=timeout):
                 yield message
 
-    def sendMessage(self, to, message):
+    def send_message(self, to, message):
         return self.call("sendMessage", chat_id=to, text=message)
 
-    def getMe(self):
+    def get_me(self):
         data = self.call("getMe")
         return data
