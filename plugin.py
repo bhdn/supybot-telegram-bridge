@@ -69,11 +69,10 @@ class TelegramBridge(callbacks.Plugin):
         self._tg = TelegramBot(self._tgToken)
 
     def _feedToSupybot(self, author, text):
-        newMsg = ircmsgs.privmsg(self._tgTargetChannel,
-                                 text.encode("utf8", "replace"))
-        newMsg.prefix = self._tgIrc.prefix.encode("utf8", "replace")
+        newMsg = ircmsgs.privmsg(self._tgTargetChannel, text)
+        newMsg.prefix = self._tgIrc.prefix
         newMsg.tag("from_telegram")
-        newMsg.nick = author.encode("ascii", "replace")
+        newMsg.nick = author
         self.log.debug("feeding back to supybot: %s", newMsg)
         self._tgIrc.feedMsg(newMsg)
 
