@@ -75,7 +75,8 @@ class TelegramBridge(callbacks.Plugin):
         self.log.debug("feeding back to supybot: %s", new_msg)
         self._tgIrc.feedMsg(new_msg)
 
-    def _tg_user_repr(self, user):
+    @staticmethod
+    def _tg_user_repr(user):
         user_id = user.get("id", "??")
         last_name = user.get("last_name", "")
         name = user.get("first_name", str(user_id)) + last_name
