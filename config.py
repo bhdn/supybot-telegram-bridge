@@ -44,9 +44,9 @@ TelegramBridge = conf.registerPlugin('TelegramBridge')
 conf.registerGlobalValue(TelegramBridge, 'tgToken',
                          registry.String("TelegramUser",
                                          "ID of the telegram bot (as shown by BotFather during creation)"))
-conf.registerGlobalValue(TelegramBridge, 'tgChatId',
-                         registry.Integer(666, "ID of the telegram chat"))
 conf.registerGlobalValue(TelegramBridge, 'tgTimeout',
                          registry.Integer(120, "API timeout for waiting for updates"))
+conf.registerChannelValue(TelegramBridge, 'tgChatId',
+                         registry.Integer(0, "ID of the telegram chat"))
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
