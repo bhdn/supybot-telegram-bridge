@@ -55,7 +55,7 @@ class TelegramBridge(callbacks.Plugin):
 
     def __init__(self, irc):
         super(TelegramBridge, self).__init__(irc)
-        self.log.debug("initualizing")
+        self.log.debug("TelegramBridge initializing")
         self._tgToken = self.registryValue("tgToken")
         try:
             self._tgId = int(self._tgToken.split(":", 1)[0])
