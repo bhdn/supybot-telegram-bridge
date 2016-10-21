@@ -106,8 +106,8 @@ class TelegramBridge(callbacks.Plugin):
         user_id, author = self._tg_user_repr(user)
         if user_id != self._tgId:
             for line in text.splitlines():
-                user_repr = "%s> %s" % (author, line)
-                self._send_irc_message(channel, user_repr)
+                irc_text = "%s> %s" % (author, line)
+                self._send_irc_message(channel, irc_text)
                 self._feed_to_supybot(channel, author, line)
 
     def _telegram_discard_previous_updates(self):
