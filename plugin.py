@@ -123,7 +123,7 @@ class TelegramBridge(callbacks.Plugin):
                 for message in self._tg.updates_loop(self._tgTimeout):
                     self._tg_handle_text(message)
             except Exception as e:
-                self.log.critical("%s", traceback.format_exc())
+                self.log.debug("%s", traceback.format_exc())
                 self.log.critical("%s", str(e))
             time.sleep(1)
 
