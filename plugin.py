@@ -57,6 +57,7 @@ class TelegramBridge(callbacks.Plugin):
         super(TelegramBridge, self).__init__(irc)
         self.log.debug("TelegramBridge initializing")
         self._tgToken = self.registryValue("tgToken")
+        self.telegram_loop_run = True
         try:
             self._tgId = int(self._tgToken.split(":", 1)[0])
         except ValueError:
@@ -118,7 +119,7 @@ class TelegramBridge(callbacks.Plugin):
 
     def _telegram_loop(self):
         self._telegram_discard_previous_updates()
-        while True:
+        while self.telegram_loop_run:
             try:
                 for message in self._tg.updates_loop(self._tgTimeout):
                     self._tg_handle_text(message)
@@ -128,6 +129,7 @@ class TelegramBridge(callbacks.Plugin):
             time.sleep(1)
 
     def _start_telegram_loop(self):
+        self.telegram_loop_run = True
         t = threading.Thread(target=self._telegram_loop)
         t.setDaemon(True)
         t.start()
@@ -185,6 +187,10 @@ class TelegramBridge(callbacks.Plugin):
         if msg.command == "PRIVMSG" and not msg.from_telegram:
             self.doPrivmsg(irc, msg)
         return msg
+
+    def die(self):
+        self.telegram_loop_run = False
+
 
 Class = TelegramBridge
 
