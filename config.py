@@ -31,6 +31,7 @@
 import supybot.conf as conf
 import supybot.registry as registry
 
+
 def configure(advanced):
     # This will be called by supybot to configure this module.  advanced is
     # a bool that specifies whether the user identified himself as an advanced
@@ -41,12 +42,11 @@ def configure(advanced):
 
 TelegramBridge = conf.registerPlugin('TelegramBridge')
 conf.registerGlobalValue(TelegramBridge, 'tgToken',
-    registry.String("TelegramUser", "ID of the telegram bot"
-                   "(as shown by BotFather during creation)"))
-conf.registerGlobalValue(TelegramBridge, 'tgChatId',
-               registry.Integer("666", "ID of the telegram chat"))
+                         registry.String("TelegramUser",
+                                         "ID of the telegram bot (as shown by BotFather during creation)"))
 conf.registerGlobalValue(TelegramBridge, 'tgTimeout',
-               registry.Integer("120", "API timeout for waiting for "
-                   "updates"))
+                         registry.Integer(120, "API timeout for waiting for updates"))
+conf.registerChannelValue(TelegramBridge, 'tgChatId',
+                         registry.Integer(0, "ID of the telegram chat"))
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

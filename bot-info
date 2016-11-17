@@ -30,14 +30,17 @@ import sys
 import os
 import telegram
 
+
 def die(msg):
     sys.stderr.write(msg + "\n")
     sys.exit(1)
 
+
 def check(reply):
     if not reply.get("ok"):
-        die("request failed: %r" % (reply))
+        die("request failed: %r" % reply)
     return reply
+
 
 def main(argv):
     if len(argv) != 2:
@@ -46,30 +49,30 @@ def main(argv):
         token = argv[1]
         try:
             raw_id, _ = token.split(":", 1)
-            id = int(raw_id)
+            bot_id = int(raw_id)
         except ValueError:
             die("expected token format <ID>:<HASH>")
         found = False
         tg = telegram.TelegramBot(token)
         try:
-            reply = check(tg.getMe())
+            check(tg.get_me())
             for token, reply in tg.updates():
                 participant = reply.get("new_chat_participant")
-                if participant and participant.get("id") == id:
+                if participant and participant.get("id") == bot_id:
                     chat = reply.get("chat")
                     if chat:
-                        print "title: %s tgChatId: %s" % (chat.get("title"),
-                                                        chat.get("id"))
+                        print("title: %s tgChatId: %s" % (chat.get("title"),
+                                                          chat.get("id")))
                         found = True
-        except telegram.TelegramError, e:
-            die("error: %s" % (e))
+        except telegram.TelegramError as e:
+            die("error: %s" % e)
         if found:
-            print
-            print "Please check if the intended chat shows up above and use "\
-                "tgChatId in the bot configuration."
+            print()
+            print("Please check if the intended chat shows up above and use "
+                  "tgChatId in the bot configuration.")
         else:
-            die("It seems the bot did not join any chat in the last 24 "\
-                "hours. Please check whether the token is correct and "\
+            die("It seems the bot did not join any chat in the last 24 "
+                "hours. Please check whether the token is correct and "
                 "the bot has actually joined any chat.")
 
 if __name__ == "__main__":
