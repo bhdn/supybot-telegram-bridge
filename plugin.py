@@ -28,11 +28,7 @@
 
 ###
 
-from .telegram import TelegramBot, TelegramError
-import supybot.utils as utils
-from supybot.commands import *
-import supybot.plugins as plugins
-import supybot.ircutils as ircutils
+from .telegram import TelegramBot
 import supybot.callbacks as callbacks
 import supybot.ircmsgs as ircmsgs
 
@@ -40,7 +36,6 @@ import traceback
 import threading
 import time
 import sys
-import re
 
 import importlib
 from . import telegram

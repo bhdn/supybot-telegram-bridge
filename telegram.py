@@ -28,7 +28,6 @@
 
 import sys
 import json
-import pprint
 
 if sys.version_info[0] >= 3:
     from urllib.parse import urlencode
