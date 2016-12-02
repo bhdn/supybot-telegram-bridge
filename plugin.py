@@ -80,7 +80,8 @@ class TelegramBridge(callbacks.Plugin):
         return user_id, chosen
 
     def _tg_handle_text(self, message):
-        chat_ids = {self.registryValue('tgChatId', ch): ch for ch in self._tgIrc.state.channels}
+        chat_ids = {self.registryValue('tgChatId', ch):
+                    ch for ch in self._tgIrc.state.channels}
         msg_chat_id = message.get("chat")
         if not msg_chat_id:
             self.log.warning("Malformed Telegram message")
@@ -88,14 +89,17 @@ class TelegramBridge(callbacks.Plugin):
         msg_chat_id = msg_chat_id.get("id")
         channel = chat_ids.get(msg_chat_id, None)
         if channel is None:
-            self.log.info("Got message from unknown Telegram group: %s", msg_chat_id)
+            self.log.info("Got message from unknown Telegram group: %s",
+                          msg_chat_id)
             return
         else:
-            self.log.debug("Got message from Telegram chat %s, relaying to channel %s", msg_chat_id, channel)
+            self.log.debug("Got message from Telegram chat %s, relaying "
+                           "to channel %s", msg_chat_id, channel)
 
         text = message.get("text", "")
         if not text:
-            for msg_type in ("photo", "video", "audio", "sticker", "contact", "location"):
+            for msg_type in ("photo", "video", "audio", "sticker", "contact",
+                             "location"):
                 if message.get(msg_type):
                     text = "<%s>" % msg_type
         user = message.get("from")
@@ -149,7 +153,8 @@ class TelegramBridge(callbacks.Plugin):
                 and not msg.from_telegram):
             chat_id = self.registryValue("tgChatId", channel)
             if not chat_id or chat_id == 0:
-                self.log.debug("TelegramBridge not configured for channel %s", channel)
+                self.log.debug("TelegramBridge not configured for channel %s",
+                               channel)
                 return
 
             text = msg.args[1]

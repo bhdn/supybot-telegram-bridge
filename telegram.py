@@ -56,7 +56,8 @@ class TelegramBot:
         try:
             data = urlopen(query_url, timeout=self.timeout)
         except EnvironmentError as e:
-            raise TelegramError("failed to send request to %s: %s" % (query_url, e))
+            raise TelegramError("failed to send request to %s: %s" %
+                                (query_url, e))
         if sys.version_info[0] >= 3:
             data = data.read().decode()
         return json.loads(data)
