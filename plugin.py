@@ -111,7 +111,7 @@ class TelegramBridge(callbacks.Plugin):
         return text
 
     def _tg_handle_message(self, message):
-        chat_ids = {self.registryValue('tgChatId', ch):
+        chat_ids = {self.registryValue("tgChatId", ch):
                     ch for ch in self._tgIrc.state.channels}
         msg_chat_id = message.get("chat")
         if not msg_chat_id:
