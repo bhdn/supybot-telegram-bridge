@@ -96,7 +96,7 @@ class TelegramBridge(callbacks.Plugin):
     def _tg_repr_non_text(self, message):
         text = ""
         for type in ("photo", "video", "audio", "sticker", "contact",
-                     "location"):
+                     "location", "venue", "voice", "game", "document"):
             object = message.get(type)
             if object:
                 if type == "sticker":
