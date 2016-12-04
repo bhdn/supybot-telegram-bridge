@@ -79,7 +79,29 @@ class TelegramBridge(callbacks.Plugin):
         chosen = user.get("username", name)
         return user_id, chosen
 
-    def _tg_handle_text(self, message):
+    def _tg_repr_location(self, location):
+        template = ("http://www.google.com/maps/place/"
+                    "{0},{1}/@{0},{1},17z")
+        text = template.format(location.get("latitude"),
+                               location.get("longitude"))
+        return text
+
+    def _tg_repr_non_text(self, message):
+        text = ""
+        for type in ("photo", "video", "audio", "sticker", "contact",
+                     "location"):
+            object = message.get(type)
+            if object:
+                if type == "sticker":
+                    text = "<{}>".format(object.get("emoji"))
+                elif type == "location":
+                    text = self._tg_repr_location(object)
+                else:
+                    text = "<{}>".format(type)
+                break
+        return text
+
+    def _tg_handle_message(self, message):
         chat_ids = {self.registryValue('tgChatId', ch):
                     ch for ch in self._tgIrc.state.channels}
         msg_chat_id = message.get("chat")
@@ -95,13 +117,9 @@ class TelegramBridge(callbacks.Plugin):
         else:
             self.log.debug("Got message from Telegram chat %s, relaying "
                            "to channel %s", msg_chat_id, channel)
-
-        text = message.get("text", "")
+        text = message.get("text")
         if not text:
-            for msg_type in ("photo", "video", "audio", "sticker", "contact",
-                             "location"):
-                if message.get(msg_type):
-                    text = "<%s>" % msg_type
+            text = self._tg_repr_non_text(message)
         user = message.get("from")
         user_id, author = self._tg_user_repr(user)
         if user_id != self._tgId:
@@ -121,7 +139,7 @@ class TelegramBridge(callbacks.Plugin):
         while self.telegram_loop_run:
             try:
                 for message in self._tg.updates_loop(self._tgTimeout):
-                    self._tg_handle_text(message)
+                    self._tg_handle_message(message)
             except Exception as e:
                 self.log.debug("%s", traceback.format_exc())
                 self.log.critical("%s", str(e))
