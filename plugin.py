@@ -86,6 +86,13 @@ class TelegramBridge(callbacks.Plugin):
                                location.get("longitude"))
         return text
 
+    def _tg_repr_contact(self, contact):
+        template = "<contact {} {} {}>"
+        text = template.format(contact.get("first_name"),
+                               contact.get("last_name"),
+                               contact.get("phone_number"))
+        return text
+
     def _tg_repr_non_text(self, message):
         text = ""
         for type in ("photo", "video", "audio", "sticker", "contact",
@@ -96,6 +103,8 @@ class TelegramBridge(callbacks.Plugin):
                     text = "<{}>".format(object.get("emoji"))
                 elif type == "location":
                     text = self._tg_repr_location(object)
+                elif type == "contact":
+                    text = self._tg_repr_contact(object)
                 else:
                     text = "<{}>".format(type)
                 break
