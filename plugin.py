@@ -110,32 +110,40 @@ class TelegramBridge(callbacks.Plugin):
                 break
         return text
 
-    def _tg_handle_message(self, message):
-        chat_ids = {self.registryValue("tgChatId", ch):
-                    ch for ch in self._tgIrc.state.channels}
-        msg_chat_id = message.get("chat")
-        if not msg_chat_id:
-            self.log.warning("Malformed Telegram message")
-            return
-        msg_chat_id = msg_chat_id.get("id")
-        channel = chat_ids.get(msg_chat_id, None)
-        if channel is None:
-            self.log.info("Got message from unknown Telegram group: %s",
-                          msg_chat_id)
-            return
-        else:
-            self.log.debug("Got message from Telegram chat %s, relaying "
-                           "to channel %s", msg_chat_id, channel)
+    def _tg_repr_message(self, message):
         text = message.get("text")
         if not text:
             text = self._tg_repr_non_text(message)
-        user = message.get("from")
-        user_id, author = self._tg_user_repr(user)
-        if user_id != self._tgId:
-            for line in text.splitlines():
-                irc_text = "%s> %s" % (author, line)
-                self._send_irc_message(channel, irc_text)
-                self._feed_to_supybot(channel, author, line)
+        return text
+
+    def _get_channel_from_chat(self, message):
+        chat_ids = {self.registryValue("tgChatId", ch):
+                    ch for ch in self._tgIrc.state.channels}
+        chat_id = message.get("chat")
+        if not chat_id:
+            self.log.warning("Malformed Telegram message")
+        else:
+            chat_id = chat_id.get("id")
+            channel = chat_ids.get(chat_id, None)
+            if channel:
+                self.log.debug("Got message from Telegram chat %s, relaying "
+                               "to channel %s", chat_id, channel)
+            else:
+                self.log.info("Got message from unknown Telegram group: %s",
+                              chat_id)
+        return channel
+
+    def _tg_handle_message(self, message):
+        channel = self._get_channel_from_chat(message)
+        if channel:
+            text = self._tg_repr_message(message)
+            user = message.get("from")
+            user_id, author = self._tg_user_repr(user)
+            if user_id != self._tgId:
+                for line in text.splitlines():
+                    irc_text = "%s> %s" % (author, line)
+                    self._send_irc_message(channel, irc_text)
+                    self._feed_to_supybot(channel, author, line)
 
     def _telegram_discard_previous_updates(self):
         update_id = None
