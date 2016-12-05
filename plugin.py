@@ -80,8 +80,8 @@ class TelegramBridge(callbacks.Plugin):
         return user_id, chosen
 
     def _tg_repr_location(self, location):
-        template = ("http://www.google.com/maps/place/"
-                    "{0},{1}/@{0},{1},17z")
+        template = ("<location http://www.google.com/maps/place/"
+                    "{0},{1}/@{0},{1},17z>")
         text = template.format(location.get("latitude"),
                                location.get("longitude"))
         return text
@@ -100,7 +100,7 @@ class TelegramBridge(callbacks.Plugin):
             object = message.get(type)
             if object:
                 if type == "sticker":
-                    text = "<{}>".format(object.get("emoji"))
+                    text = "<sticker {}>".format(object.get("emoji"))
                 elif type == "location":
                     text = self._tg_repr_location(object)
                 elif type == "contact":
